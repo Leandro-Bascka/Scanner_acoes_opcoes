@@ -1,0 +1,10 @@
+{
+  "name": "Opções B3 · Wheel e Calls longas",
+  "short_name": "Opções B3",
+  "description": "Scanner de opções da B3: Wheel (venda de PUT/CALL) e calls longas",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#0b0e13",
+  "theme_color": "#0b0e13"
+}
