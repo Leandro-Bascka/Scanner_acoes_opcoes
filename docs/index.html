@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1419">
+<title>Gráficos de Ações B3</title>
+<script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+  :root{--bg:#0f1419;--card:#18202a;--line:#2a3441;--tx:#e6edf3;--mut:#8b98a5;--up:#26a69a;--dn:#ef5350;--acc:#4da3ff}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:10px 12px}
+  h1{font-size:16px;margin:0 0 8px;display:flex;justify-content:space-between;align-items:baseline}
+  h1 small{font-weight:400;color:var(--mut);font-size:12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  input,select{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:16px;min-width:0}
+  input{flex:1 1 120px}
+  .chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px;padding-bottom:2px}
+  .chip{white-space:nowrap;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+  .chip.on{color:var(--tx);border-color:var(--acc);background:#16314d}
+  #list{padding:6px 8px 40px}
+  .item{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;margin:6px 0;cursor:pointer}
+  .item:active{background:#1d2937}
+  .rk{color:var(--mut);font-size:12px;text-align:center}
+  .tk{font-weight:600}.sub{color:var(--mut);font-size:12px}
+  .px{text-align:right}.up{color:var(--up)}.dn{color:var(--dn)}
+  .tag{font-size:11px;padding:1px 6px;border-radius:6px;border:1px solid var(--line);margin-left:4px;color:var(--mut)}
+  #view{position:fixed;inset:0;background:var(--bg);z-index:10;display:none;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #view.show{display:flex}
+  #view>*{flex:none}
+  #vbar{position:sticky;top:0;z-index:6;background:var(--bg);display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);padding-top:max(8px,env(safe-area-inset-top))}
+  #vbar button{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:15px}
+  #vt{flex:1;font-weight:600}
+  #vinfo{display:flex;gap:12px;overflow-x:auto;padding:6px 12px;font-size:12px;color:var(--mut);border-bottom:1px solid var(--line);white-space:nowrap}
+  #vinfo b{color:var(--tx);font-weight:600}
+  #cwrap{position:relative;height:calc(100vh - 110px);height:calc(100dvh - 110px);min-height:460px}
+  #proj{padding:12px 12px calc(28px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+  #proj h2{font-size:15px;margin:16px 0 4px}
+  #proj h2:first-child{margin-top:0}
+  #proj p{margin:4px 0 8px;font-size:13px;color:var(--mut)}
+  #proj p b,#proj td b{color:var(--tx)}
+  .ptoggle{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:6px;font-size:14px}
+  .ptoggle label{display:flex;align-items:center;gap:6px}
+  .ptoggle input{flex:none;width:18px;height:18px;padding:0;margin:0}
+  table.pt{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+  table.pt th{font-weight:500;color:var(--mut);text-align:right;padding:5px 4px;border-bottom:1px solid var(--line);font-size:12px}
+  table.pt td{text-align:right;padding:6px 4px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.pt th:first-child,table.pt td:first-child{text-align:left}
+  table.pt td small{display:block;color:var(--mut);font-size:11px}
+  table.pt tr.now td{background:#16314d;font-weight:600}
+  table.pt tr.sw td:first-child{color:var(--mut)}
+  .z1{color:var(--up)}.z2{color:#ffd54f}.z3{color:var(--mut)}
+  #chart{position:absolute;inset:0}
+  #plabels{position:absolute;inset:0;pointer-events:none;z-index:3}
+  .plab{position:absolute;right:0;font-size:11px;color:var(--mut);background:#0f1419cc;padding:1px 6px;border-radius:4px;white-space:nowrap}
+  #plegend{position:absolute;left:6px;top:4px;z-index:3;pointer-events:none;display:flex;gap:8px;flex-wrap:wrap;max-width:75%;font-size:10px;color:var(--mut);background:#0f1419b3;padding:2px 6px;border-radius:4px}
+  #plegend i{display:inline-block;width:12px;height:0;border-top:2px solid;vertical-align:middle;margin-right:3px}
+  .hbtn{background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;white-space:nowrap}
+  #modal{position:fixed;inset:0;z-index:30;background:#000b;display:none;align-items:center;justify-content:center;padding:12px}
+  #modal.show{display:flex}
+  .mcard{background:var(--bg);border:1px solid var(--line);border-radius:12px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column}
+  .mhead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line)}
+  #mbody{overflow-y:auto;padding:6px 12px 14px}
+  #mbody .li{padding:10px 0;border-bottom:1px solid var(--line)}
+  #mbody .li:last-child{border-bottom:0}
+  #mbody .li b{display:block;margin-bottom:2px}
+  #mbody .li p{margin:0 0 4px;font-size:13px;color:var(--tx)}
+  #mbody .li small{display:block;font-size:12px;color:var(--acc)}
+  #mbody h3{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 0}
+  .empty{color:var(--mut);text-align:center;padding:40px 0}
+  a.hbtn,#vbar a{text-decoration:none;display:inline-block;background:var(--card);color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:15px;white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ações B3 Bascka <small id="upd"></small></h1>
+  <div class="row">
+    <input id="q" placeholder="Buscar ticker (ex: PETR4)" autocapitalize="characters" autocomplete="off">
+    <select id="ord">
+      <option value="rank">Liquidez</option>
+      <option value="chg">Variação do dia</option>
+      <option value="rsi">RSI (menor)</option>
+      <option value="t">A–Z</option>
+      <option value="inst">Score acum./reversão</option>
+    </select>
+    <a class="hbtn" href="opcoes/">📊 Opções</a>
+    <button id="info" class="hbtn">ⓘ Legenda</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<div id="modal"><div class="mcard">
+  <div class="mhead"><b>Legenda dos filtros</b><button id="mclose" class="hbtn">Fechar</button></div>
+  <div id="mbody"></div>
+</div></div>
+<div id="list"></div>
+
+<div id="view">
+  <div id="vbar"><button id="back">‹ Voltar</button><span id="vt"></span><a id="opt" href="opcoes/">📊 Opções</a><button id="prev">←</button><button id="next">→</button></div>
+  <div id="vinfo"></div>
+  <div id="cwrap"><div id="chart"></div><div id="plabels"></div>
+    <div id="plegend"><span><i style="border-color:#4da3ff"></i>MA9</span><span><i style="border-color:#f06292"></i>SMA20</span><span><i style="border-color:#ffa726"></i>EMA50</span><span><i style="border-color:#e6edf3"></i>EMA200</span><span><i style="border-color:#5b6773;border-top-style:dashed"></i>Bollinger</span><span id="plextra"></span></div></div>
+  <div id="proj"></div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let ITEMS = [], shown = [], filter = 'all', chart = null, curIdx = -1;
+
+const TOP_N = 50, RSI_LOW = 35, RSI_HIGH = 70;
+const FIB_START = 5;   // as linhas de Fibonacci começam N pregões à frente do último candle
+const FILTERS = [
+  ['all','Todos'],['top50','Top 50 liquidez'],
+  ['rsiLow','RSI < 35'],['rsiHigh','RSI > 70'],
+  ['crossUp','Cruz. MA9↑SMA20 ({d}d)'],['crossDn','Cruz. MA9↓SMA20 ({d}d)'],
+  ['c2050Up','Cruz. SMA20↑EMA50 ({d}d)'],['c2050Dn','Cruz. SMA20↓EMA50 ({d}d)'],
+  ['divAny','Diverg. de alta (RSI ou MACD)'],['divRsi','Diverg. de alta RSI'],['divMacd','Diverg. de alta MACD'],
+  ['inst','Acumulação/Reversão']
+];
+let CD = 3; // janela de cruzamento em pregões (vem do index.json)
+// parâmetros usados no cálculo (vêm do index.json, gerado pelo build.py; estes são só valores iniciais)
+let CFG = {cross_days:3, liq_days:60, div:{pivot:3,recent:10,min_gap:5,max_gap:60,price_tol_pct:0.3,rsi_margin:1,rsi_max:45}};
+const PRED = {
+  all:()=>true, top50:x=>x.rank<=TOP_N,
+  rsiLow:x=>x.rsi!=null&&x.rsi<RSI_LOW, rsiHigh:x=>x.rsi!=null&&x.rsi>RSI_HIGH,
+  crossUp:x=>x.cross===1, crossDn:x=>x.cross===-1,
+  c2050Up:x=>x.c2050===1, c2050Dn:x=>x.c2050===-1,
+  divAny:x=>x.divrsi===true||x.divmacd===true, divRsi:x=>x.divrsi===true, divMacd:x=>x.divmacd===true,
+  inst:x=>x.isig==='acum'||x.isig==='rev'   // scanner de acumulação/reversão (sinal nos últimos dias)
+};
+
+function fmtMoney(v){ if(v>=1e9) return (v/1e9).toFixed(2)+' bi'; if(v>=1e6) return (v/1e6).toFixed(1)+' mi'; return Math.round(v/1e3)+' mil'; }
+
+function render(){
+  const q = $('#q').value.trim().toUpperCase(), ord = $('#ord').value;
+  shown = ITEMS.filter(PRED[filter]).filter(x => !q || x.t.includes(q));
+  shown.sort((a,b)=> ord==='t' ? a.t.localeCompare(b.t)
+    : ord==='rank' ? a.rank-b.rank
+    : ord==='chg' ? (b.chg??-1e9)-(a.chg??-1e9)
+    : ord==='inst' ? ((b.isc??-1)-(a.isc??-1)) || ((b.isa??-1)-(a.isa??-1)) || (a.rank-b.rank)   // como no scanner: score confirmado, depois antecipado
+    : (a.rsi??1e9)-(b.rsi??1e9));
+  $('#list').innerHTML = shown.length ? shown.map((x,i)=>`
+    <div class="item" data-i="${i}">
+      <div class="rk">#${x.rank}</div>
+      <div><span class="tk">${x.t}</span>${x.cross===1?'<span class="tag up">9↑20</span>':''}${x.cross===-1?'<span class="tag dn">9↓20</span>':''}${x.c2050===1?'<span class="tag up">20↑50</span>':''}${x.c2050===-1?'<span class="tag dn">20↓50</span>':''}${x.divrsi?'<span class="tag up">div RSI</span>':''}${x.divmacd?'<span class="tag up">div MACD</span>':''}${x.isig==='rev'?'<span class="tag up">REV</span>':''}${x.isig==='acum'?'<span class="tag" style="color:#40c4ff;border-color:#40c4ff66">ACUM</span>':''}
+        <div class="sub">RSI ${x.rsi??'–'} · Liq ${fmtMoney(x.liq)}${x.isig?` · Score ${x.isa}/${x.isc}`:''}</div></div>
+      <div class="px">R$ ${x.close?.toFixed(2)??'–'}<div class="${x.chg>=0?'up':'dn'}">${x.chg>=0?'+':''}${x.chg??'–'}%</div></div>
+    </div>`).join('') : '<div class="empty">Nenhum ativo encontrado</div>';
+}
+
+function buildChips(){
+  $('#chips').innerHTML = FILTERS.map(([k,l])=>`<div class="chip ${k===filter?'on':''}" data-k="${k}">${l.replace('{d}',CD)}</div>`).join('');
+}
+
+async function openTicker(i){
+  curIdx = i; const it = shown[i]; if(!it) return;
+  $('#view').classList.add('show'); $('#vt').textContent = it.t; $('#opt').href = 'opcoes/#' + it.t;
+  $('#vinfo').innerHTML = `<span>Rank <b>#${it.rank}</b></span><span>R$ <b>${it.close}</b></span><span>RSI <b>${it.rsi??'–'}</b></span><span>MACD <b>${it.macd??'–'}</b></span><span>Liq <b>${fmtMoney(it.liq)}</b></span><span>${it.date}</span>${it.divrsi?'<span style="color:#00e676">Diverg. alta RSI</span>':''}${it.divmacd?'<span style="color:#40c4ff">Diverg. alta MACD</span>':''}${it.isig==='rev'?'<span style="color:#00e676">Reversão confirmada</span>':''}${it.isig==='acum'?'<span style="color:#40c4ff">Possível acumulação</span>':''}`;
+  const d = await (await fetch(`data/${it.t}.json`)).json();
+  CUR = d; $('#view').scrollTop = 0;
+  draw(d);
+  $('#proj').innerHTML = projHtml(d) + instHtml(d);
+  $('#tg-vol').onchange = e => { SHOW_VOL = e.target.checked; draw(CUR); };
+  $('#tg-fib').onchange = e => { SHOW_FIB = e.target.checked; draw(CUR); };
+}
+
+// próximos n dias úteis depois de uma data 'AAAA-MM-DD' (usado só se não houver projeção de volatilidade)
+function futureDates(last, n){
+  const out = [], dt = new Date(last + 'T00:00:00Z');
+  while(out.length < n){ dt.setUTCDate(dt.getUTCDate()+1); const w = dt.getUTCDay(); if(w!==0 && w!==6) out.push(dt.toISOString().slice(0,10)); }
+  return out;
+}
+
+// ---- análise: volatilidade histórica projetada + Fibonacci ----
+let CUR = null, SHOW_VOL = true, SHOW_FIB = true;
+const f2 = v => v==null ? '–' : v.toFixed(2);
+const sgn = v => (v>=0?'+':'') + v.toFixed(1) + '%';
+const brDate = s => s ? s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(2,4) : '';
+function projHtml(d){
+  const V = d.vol, F = d.fib, last = d.c[d.c.length-1], H = V ? V.dates.length : 0;
+  let h = `<div class="ptoggle"><label><input type="checkbox" id="tg-vol" ${SHOW_VOL?'checked':''}> Projeção ±σ no gráfico</label>
+           <label><input type="checkbox" id="tg-fib" ${SHOW_FIB?'checked':''}> Fibonacci no gráfico</label></div>`;
+  h += '<h2>Volatilidade histórica projetada</h2>';
+  if(V){
+    const cell = p => `${f2(p)}<small>${sgn((p/V.last-1)*100)}</small>`;
+    h += `<p>Desvio padrão diário dos retornos: <b>${(V.sigma*100).toFixed(2)}%</b> (${V.n} pregões) · anualizado: <b>${(V.ann*100).toFixed(1)}%</b> · último preço <b>R$ ${f2(V.last)}</b>.</p>
+      <table class="pt"><tr><th>Em</th><th>−2σ</th><th>−1σ</th><th>+1σ</th><th>+2σ</th></tr>
+      ${V.steps.map(s=>`<tr><td>${s.n} pregões</td><td>${cell(s.l2)}</td><td>${cell(s.l1)}</td><td>${cell(s.u1)}</td><td>${cell(s.u2)}</td></tr>`).join('')}</table>
+      <p>Na teoria (retornos normais, sem tendência), o preço ficaria dentro de ±1σ em ~68% dos casos e dentro de ±2σ em ~95%. No gráfico, as linhas tracejadas amarelas são ±1σ e as pontilhadas roxas, ±2σ.</p>`;
+  } else h += '<p>Dados insuficientes para calcular a volatilidade.</p>';
+
+  h += '<h2>Fibonacci</h2>';
+  if(F){
+    const up = F.dir === 'alta';
+    h += `<p>Último grande movimento de <b>${F.dir}</b> (janela de ${CFG.fib?.lookback ?? 120} pregões): ${up
+      ? `mínima <b>R$ ${f2(F.lo)}</b> (${brDate(F.d_lo)}) → máxima <b>R$ ${f2(F.hi)}</b> (${brDate(F.d_hi)})`
+      : `máxima <b>R$ ${f2(F.hi)}</b> (${brDate(F.d_hi)}) → mínima <b>R$ ${f2(F.lo)}</b> (${brDate(F.d_lo)})`}.
+      ${up ? 'As retrações indicam até onde uma correção pode chegar; as extensões, alvos se a alta continuar.'
+           : 'As retrações indicam até onde um repique pode chegar; as extensões, alvos se a queda continuar.'}</p>`;
+    const pct = v => (v*100).toFixed(v*100 % 1 ? 1 : 0);
+    const rows = [
+      ...F.ret.map(([r,p]) => ({n:`Retração ${pct(r)}%`, p})),
+      ...F.ext.map(([e,p]) => ({n:`Extensão ${pct(e)}%`, p})),
+      {n:`Topo (${brDate(F.d_hi)})`, p:F.hi, sw:1}, {n:`Fundo (${brDate(F.d_lo)})`, p:F.lo, sw:1},
+      {n:'Preço atual', p:last, now:1},
+    ].sort((a,b)=>b.p-a.p);
+    const reach = p => {
+      if(!V) return ['–','z3'];
+      const z = Math.abs(Math.log(p/last)) / (V.sigma*Math.sqrt(H));
+      return z<=1 ? ['≤ 1σ','z1'] : z<=2 ? ['≤ 2σ','z2'] : ['> 2σ','z3'];
+    };
+    h += `<table class="pt"><tr><th>Nível</th><th>Preço</th><th>Dist.</th><th>Em ${H} pregões</th></tr>
+      ${rows.map(r=>{ const [z,zc] = reach(r.p);
+        return `<tr class="${r.now?'now':''} ${r.sw?'sw':''}"><td>${r.n}</td><td>${f2(r.p)}</td><td>${r.now?'':sgn((r.p/last-1)*100)}</td><td class="${zc}">${r.now?'':z}</td></tr>`; }).join('')}</table>`;
+    const conf = [...F.ret.map(([r,p])=>[`Retr. ${pct(r)}%`,p]), ...F.ext.map(([e,p])=>[`Ext. ${pct(e)}%`,p])]
+      .filter(([,p]) => V && Math.abs(Math.log(p/last)) / (V.sigma*Math.sqrt(H)) <= 1);
+    h += V ? (conf.length
+      ? `<p><b>Em conjunto:</b> níveis de Fibonacci dentro do cone de ±1σ em ${H} pregões, ou seja, alcançáveis sem um movimento fora do comum: <b>${conf.map(([n,p])=>`${n} (R$ ${f2(p)})`).join(' · ')}</b>.</p>`
+      : `<p><b>Em conjunto:</b> nenhum nível de Fibonacci cai dentro do cone de ±1σ em ${H} pregões; alcançar qualquer um exigiria um movimento acima do típico.</p>`) : '';
+  } else h += '<p>Sem movimento relevante na janela para traçar níveis de Fibonacci.</p>';
+  h += '<p style="margin-top:14px;font-size:12px">Projeções estatísticas teóricas calculadas a partir do passado; não são previsão nem recomendação de compra ou venda. Mercados saem do cone com frequência, principalmente em eventos e notícias.</p>';
+  return h;
+}
+
+function draw(d){
+  if(chart){ chart.remove(); chart = null; }
+  const L = LightweightCharts;
+  chart = L.createChart($('#chart'), {
+    autoSize:true,
+    layout:{background:{color:'#0f1419'},textColor:'#8b98a5',panes:{separatorColor:'#2a3441'}},
+    grid:{vertLines:{color:'#1a222c'},horzLines:{color:'#1a222c'}},
+    rightPriceScale:{borderColor:'#2a3441'}, timeScale:{borderColor:'#2a3441',rightOffset:3},
+    crosshair:{mode:L.CrosshairMode.Normal},
+    handleScroll:{vertTouchDrag:false}   // arrastar na vertical rola a página (até a análise), não o gráfico
+  });
+  const line = (arr,color,pane,opts={}) => {
+    const s = chart.addSeries(L.LineSeries,{color,lineWidth:1,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,...opts},pane);
+    s.setData(d.t.map((t,i)=>arr[i]==null?{time:t}:{time:t,value:arr[i]})); return s;
+  };
+  // pane 0: preço
+  // preenchimento da banda de Bollinger (azul ~80% transparente): área sob a banda superior em azul,
+  // coberta por uma área na cor do fundo sob a banda inferior. Vêm antes dos candles para ficar atrás.
+  const band = (arr,top,bottom) => {
+    const s = chart.addSeries(L.AreaSeries,{lineVisible:false,topColor:top,bottomColor:bottom,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false},0);
+    s.setData(d.t.map((t,i)=>arr[i]==null?{time:t}:{time:t,value:arr[i]}));
+  };
+  band(d.bbu,'rgba(77,163,255,0.2)','rgba(77,163,255,0.2)');
+  band(d.bbl,'#0f1419','#0f1419');
+  const cs = chart.addSeries(L.CandlestickSeries,{upColor:'#26a69a',downColor:'#ef5350',borderVisible:false,wickUpColor:'#26a69a',wickDownColor:'#ef5350'},0);
+  cs.setData(d.t.map((t,i)=>({time:t,open:d.o[i],high:d.h[i],low:d.l[i],close:d.c[i]})));
+  line(d.ma9,'#4da3ff',0); line(d.ema50,'#ffa726',0); line(d.ema200,'#e6edf3',0);
+  line(d.sma20,'#f06292',0); line(d.bbu,'#5b6773',0,{lineStyle:2}); line(d.bbl,'#5b6773',0,{lineStyle:2});
+  // pane 1: volume
+  const vs = chart.addSeries(L.HistogramSeries,{priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false},1);
+  vs.setData(d.t.map((t,i)=>({time:t,value:d.v[i],color:i>0&&d.c[i]>=d.c[i-1]?'#26a69a99':'#ef535099'})));
+  // pane 2: MACD
+  const hs = chart.addSeries(L.HistogramSeries,{priceLineVisible:false,lastValueVisible:false},2);
+  hs.setData(d.t.map((t,i)=>d.hist[i]==null?{time:t}:{time:t,value:d.hist[i],color:d.hist[i]>=0?'#26a69a99':'#ef535099'}));
+  line(d.macd,'#4da3ff',2); line(d.sig,'#ffa726',2);
+  // pane 3: RSI
+  const rs = line(d.rsi,'#b388ff',3,{lastValueVisible:true});
+  rs.createPriceLine({price:70,color:'#26a69a',lineStyle:2,lineWidth:1,axisLabelVisible:false});
+  rs.createPriceLine({price:30,color:'#ef5350',lineStyle:2,lineWidth:1,axisLabelVisible:false});
+  // pane 4: Estocástico lento
+  const k = line(d.stk,'#4da3ff',4); line(d.std,'#ef5350',4);
+  k.createPriceLine({price:80,color:'#26a69a',lineStyle:2,lineWidth:1,axisLabelVisible:false});
+  k.createPriceLine({price:20,color:'#ef5350',lineStyle:2,lineWidth:1,axisLabelVisible:false});
+  // pane 5: ATR
+  line(d.atr,'#4da3ff',5,{lastValueVisible:true});
+  // divergências de alta: liga os dois fundos no preço e no indicador (verde = RSI, azul claro = MACD)
+  const seg = (pts,color,pane) => {
+    const s = chart.addSeries(L.LineSeries,{color,lineWidth:2,lineStyle:2,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false},pane);
+    s.setData(pts);
+  };
+  const DV = d.div || {};
+  [['rsi','#00e676',3],['macd','#40c4ff',2]].forEach(([k,col,pane])=>{
+    const v = DV[k]; if(!v || !d.t.includes(v.d1) || !d.t.includes(v.d2)) return;
+    seg([{time:v.d1,value:v.p1},{time:v.d2,value:v.p2}],col,0);
+    seg([{time:v.d1,value:v.v1},{time:v.d2,value:v.v2}],col,pane);
+  });
+  // projeção de volatilidade: cone de ±1σ (amarelo tracejado) e ±2σ (roxo pontilhado) a partir do último fechamento
+  const V = d.vol, F = d.fib; let ahead = 0, extra = '';
+  if(SHOW_VOL && V){
+    const lastT = d.t[d.t.length-1];
+    const cone = (arr,color,style) => {
+      const s = chart.addSeries(L.LineSeries,{color,lineWidth:1,lineStyle:style,priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false},0);
+      s.setData([{time:lastT,value:V.last}, ...V.dates.map((t,i)=>({time:t,value:arr[i]}))]);
+    };
+    cone(V.u1,'#ffd54f',2); cone(V.l1,'#ffd54f',2); cone(V.u2,'#ab47bc',1); cone(V.l2,'#ab47bc',1);
+    ahead = V.dates.length;
+    extra += '<span><i style="border-color:#ffd54f;border-top-style:dashed"></i>±1σ</span><span><i style="border-color:#ab47bc;border-top-style:dotted"></i>±2σ</span>';
+  }
+  // Fibonacci: retrações (laranja) e extensões (verde-água) do último grande movimento.
+  // Desenhadas só da última data para frente (como o cone), e sem influenciar a escala de preços.
+  if(SHOW_FIB && F){
+    const lastT = d.t[d.t.length-1];
+    const fut = (V && V.dates.length) ? V.dates : futureDates(lastT, 20);
+    const endT = fut[fut.length-1]; ahead = Math.max(ahead, fut.length);
+    const startT = fut[Math.min(FIB_START, fut.length) - 1];   // as linhas só começam FIB_START pregões à frente (o cone continua no último candle)
+    const fl = (price,color,title) => {
+      const s = chart.addSeries(L.LineSeries,{color,lineWidth:1,lineStyle:2,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,title,autoscaleInfoProvider:()=>null},0);
+      s.setData([{time:startT,value:price},{time:endT,value:price}]);
+    };
+    F.ret.forEach(([r,p]) => fl(p,'#ffb74d',String(r)));
+    F.ext.forEach(([e,p]) => fl(p,'#80cbc4','x'+e));
+    extra += '<span><i style="border-color:#ffb74d;border-top-style:dashed"></i>Fib retr.</span><span><i style="border-color:#80cbc4;border-top-style:dashed"></i>Fib ext.</span>';
+  }
+  $('#plextra').innerHTML = extra;
+  // proporções dos painéis
+  layoutPanes();
+  const lab = SHOW_FIB && F;   // com Fibonacci ligado, deixa folga à direita: os rótulos ficam no fim das linhas, sem cobrir o cone
+  chart.timeScale().setVisibleLogicalRange({from:d.t.length-(lab?78:90),to:d.t.length+ahead+(lab?16:3)});
+  setTimeout(()=>{ layoutPanes(); placeLabels(); },80);
+}
+
+// Altura (em pixels) dos painéis de indicadores, de cima para baixo: Volume, MACD, RSI, Estocástico, ATR.
+// Quanto menores, mais espaço sobra para os candles: o painel de preço fica com todo o resto da altura.
+const PANE_H = [72, 76, 76, 76, 60];
+function layoutPanes(){
+  if(!chart) return;
+  const ps = chart.panes(), total = $('#cwrap').clientHeight;
+  if(ps.length < 2 || !total) return;
+  const small = PANE_H.slice(0, ps.length-1);
+  const price = Math.max(200, total - 30 - small.reduce((a,b)=>a+b,0) - ps.length);   // 30 = eixo de datas; 1px por divisória
+  try{ ps[0].setHeight(price); small.forEach((h,i) => ps[i+1].setHeight(h)); }catch(e){}
+}
+
+// legenda de cada indicador, no canto inferior direito do respectivo painel
+const PLABELS = [null,
+  'Volume',
+  '<span style="color:#4da3ff">MACD (12,26,9)</span>',
+  '<span style="color:#b388ff">RSI (14)</span>',
+  'Estocástico · <span style="color:#4da3ff">%K (5)</span> · <span style="color:#ef5350">%D (3)</span>',
+  '<span style="color:#4da3ff">ATR (14)</span>'];
+function placeLabels(){
+  const box = $('#plabels'); if(!chart || !box) return;
+  let w = 60; try{ w = chart.priceScale('right').width() || 60; }catch(e){}
+  let y = 0, html = '';
+  chart.panes().forEach((p,i)=>{
+    const h = p.getHeight();
+    if(PLABELS[i]) html += `<div class="plab" style="top:${y+h-22}px;right:${w+6}px">${PLABELS[i]}</div>`;
+    y += h + 1;
+  });
+  box.innerHTML = html;
+}
+new ResizeObserver(()=>{ layoutPanes(); placeLabels(); }).observe($('#cwrap'));
+
+$('#list').addEventListener('click',e=>{ const el=e.target.closest('.item'); if(el) openTicker(+el.dataset.i); });
+$('#chips').addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c) return; filter=c.dataset.k;
+  if(filter==='inst') $('#ord').value='inst'; else if($('#ord').value==='inst') $('#ord').value='rank';   // o filtro novo ordena pelo score; os demais seguem como antes
+  buildChips(); render(); });
+$('#q').addEventListener('input',render); $('#ord').addEventListener('change',render);
+// ---- Acumulação / Reversão (scanner institucional): informações compiladas no fim do gráfico ----
+const IC_DEFAULT = {dias_sinal:4, vol_rel_min:1.3, atr_stop:1.5, rr1:2, rr2:3, score_ant_min:50, score_conf_min:65, benchmark:'BOVA11'};
+function instHtml(d){
+  const a = d.inst, ic = {...IC_DEFAULT, ...(CFG.inst||{})};
+  let h = '<h2>Acumulação / Reversão</h2>';
+  if(!a) return h + '<p>Histórico insuficiente (o scanner precisa de cerca de 210 pregões) para analisar este ativo.</p>';
+  const st = a.sinal==='rev' ? ['Reversão confirmada','#00e676'] : a.sinal==='acum' ? ['Possível acumulação','#40c4ff'] : ['Sem sinal','var(--mut)'];
+  h += `<p style="font-size:15px;color:var(--tx)"><b style="color:${st[1]}">${st[0]}</b>${a.data
+    ? ` · sinal em <b>${brDate(a.data)}</b> (há ${a.idade} ${a.idade===1?'dia':'dias'})`
+    : ` · nenhum sinal nos últimos ${ic.dias_sinal} pregões`}</p>`;
+  const sc = (title, total, rows, req) =>
+    `<table class="pt"><tr><th>${title}</th><th>Máx.</th><th>Hoje</th></tr>`
+    + rows.map(([n,p,ok]) => `<tr><td>${n}</td><td>${p}</td><td class="${ok?'z1':'z3'}">${ok?'✓ +'+p:'–'}</td></tr>`).join('')
+    + `<tr class="now"><td>Score total</td><td>100</td><td>${total}</td></tr></table><p>${req}</p>`;
+  h += sc('Acumulação (sinal antecipado)', a.sa, a.ant, `Vira sinal com score ≥ <b>${ic.score_ant_min}</b> e (absorção vendedora ou divergência no RSI).`);
+  h += sc('Reversão (sinal confirmado)', a.sc, a.conf, `Vira sinal com score ≥ <b>${ic.score_conf_min}</b>, rompimento da máxima dos 10 pregões anteriores e fechamento acima da EMA20.`);
+  h += `<p>Os pontos são do último pregão; o sinal vale se ocorreu em um dos últimos ${ic.dias_sinal} pregões.</p>`;
+  const v = (x, f) => x==null ? '–' : f(x);
+  h += `<h2>Indicadores de fluxo</h2><p>RSI <b>${v(a.rsi,x=>x.toFixed(1))}</b> · CMF <b>${v(a.cmf,x=>x.toFixed(3))}</b> · MFI <b>${v(a.mfi,x=>x.toFixed(1))}</b>
+    · Volume relativo <b>${v(a.vrel,x=>x.toFixed(2)+'x')}</b> · ADX <b>${v(a.adx,x=>x.toFixed(1))}</b>
+    · Força relativa 20 pregões vs ${ic.benchmark} <b>${v(a.fr,x=>(x>=0?'+':'')+x.toFixed(1)+' p.p.')}</b></p>`;
+  if(!a.bench) h += `<p style="color:#ffd54f">${ic.benchmark} não foi baixado nesta atualização: a força relativa ficou fora das pontuações.</p>`;
+  h += '<h2>Plano de referência</h2>';
+  if(a.sinal && a.plano){
+    const p = a.plano, e = p.entrada, pc = x => sgn((x/e-1)*100);
+    h += `<table class="pt"><tr><th>Nível</th><th>Preço</th><th>vs entrada</th></tr>
+      <tr class="now"><td>Entrada (último fechamento)</td><td>${f2(e)}</td><td></td></tr>
+      <tr><td>Stop (entrada − ${ic.atr_stop}×ATR)</td><td>${f2(p.stop)}</td><td class="dn">${pc(p.stop)}</td></tr>
+      <tr><td>Alvo 1 (${ic.rr1}× o risco)</td><td>${f2(p.alvo1)}</td><td class="up">${pc(p.alvo1)}</td></tr>
+      <tr><td>Alvo 2 (${ic.rr2}× o risco)</td><td>${f2(p.alvo2)}</td><td class="up">${pc(p.alvo2)}</td></tr></table>`;
+  } else h += '<p>O plano (entrada, stop e alvos) aparece quando o ativo tem sinal.</p>';
+  h += '<p style="font-size:12px">Os sinais são alertas para estudo, não ordens de compra. O plano é só uma referência baseada no ATR.</p>';
+  return h;
+}
+
+// ---- legenda dos filtros (descrição + configuração atual) ----
+function legendHtml(){
+  const c = CFG, dv = c.div || {}, cd = c.cross_days;
+  const ic = {...IC_DEFAULT, ...(c.inst||{})};
+  const vl = c.vol || {window:60,horizon:20,steps:[5,10,20]}, fb = c.fib || {lookback:120,ret:[0.236,0.382,0.5,0.618,0.786],ext:[1.272,1.618]};
+  const cross = `Janela: ${cd} ${cd===1?'pregão':'pregões'} (conta o cruzamento mais recente dentro da janela)`;
+  const divCfg = extra => `Fundos: mínima mais baixa entre ${dv.pivot} pregões antes e ${dv.pivot} depois (confirmação com ${dv.pivot} pregões de atraso) · `
+    + `2º fundo nos últimos ${dv.recent} pregões e ainda não rompido · distância entre os fundos: ${dv.min_gap} a ${dv.max_gap} pregões · `
+    + `2º fundo pelo menos ${dv.price_tol_pct}% abaixo do 1º · ${extra}`;
+  const rsiCfg = `RSI do 2º fundo pelo menos ${dv.rsi_margin} ponto acima do 1º · RSI do 1º fundo abaixo de ${dv.rsi_max}`;
+  const macdCfg = 'MACD (12,26,9) do 2º fundo acima do 1º · MACD do 1º fundo abaixo de zero';
+  const groups = [
+    ['Liquidez e ordenação', [
+      ['Todos','Mostra todos os ativos, sem filtro.','—'],
+      [`Top ${TOP_N} liquidez`,`Os ${TOP_N} ativos com maior volume financeiro médio (preço de fechamento × volume).`,`Top ${TOP_N} · média dos últimos ${c.liq_days} pregões`],
+    ]],
+    ['RSI', [
+      [`RSI < ${RSI_LOW}`,'RSI de 14 períodos (suavização de Wilder) abaixo do limite: sobrevenda, o papel caiu bastante.',`Limite: ${RSI_LOW}`],
+      [`RSI > ${RSI_HIGH}`,'RSI de 14 períodos acima do limite: sobrecompra, o papel subiu bastante.',`Limite: ${RSI_HIGH}`],
+    ]],
+    ['Médias móveis', [
+      ['Cruz. MA9↑SMA20','A MA9 cruzou a SMA20 de baixo para cima. Aparece na lista como 9↑20.',cross],
+      ['Cruz. MA9↓SMA20','A MA9 cruzou a SMA20 de cima para baixo. Aparece como 9↓20.',cross],
+      ['Cruz. SMA20↑EMA50','A média simples de 20 dias cruzou a média exponencial de 50 dias de baixo para cima. Aparece como 20↑50.',cross],
+      ['Cruz. SMA20↓EMA50','A média simples de 20 dias cruzou a média exponencial de 50 dias de cima para baixo. Aparece como 20↓50.',cross],
+    ]],
+    ['Divergência de alta', [
+      ['Diverg. de alta (RSI ou MACD)','O preço faz um fundo mais baixo, mas o RSI ou o MACD faz um fundo mais alto: a queda está perdendo força. No gráfico, uma linha tracejada liga os dois fundos no preço e no indicador.','Basta uma das duas divergências (regras abaixo)'],
+      ['Diverg. de alta RSI','Divergência entre o preço e o RSI (linha verde no gráfico).',divCfg(rsiCfg)],
+      ['Diverg. de alta MACD','Divergência entre o preço e o MACD (linha azul clara no gráfico).',divCfg(macdCfg)],
+    ]],
+    ['Acumulação / Reversão (scanner institucional)', [
+      ['Acumulação/Reversão',
+       'Mostra os ativos com algum sinal do scanner nos últimos pregões: possível acumulação (sinal antecipado) ou reversão confirmada. A lista fica ordenada pelo score, como no scanner. Na lista aparecem as etiquetas ACUM e REV e o score (antecipado/confirmado); ao abrir o gráfico, a análise completa fica no fim da página.',
+       `O sinal vale se ocorreu nos últimos ${ic.dias_sinal} pregões · força relativa contra ${ic.benchmark}${ic.bench_ok===false?' (indisponível nesta atualização)':''}`],
+      ['Possível acumulação (ACUM)',
+       `Compradores absorvendo a venda antes da virada. Score antecipado (máx. 100): absorção vendedora 20, divergência positiva no RSI 20, CMF > 0 15, OBV acima da média 10, MFI subindo 10, enfraquecimento vendedor 10, força relativa > ${ic.benchmark} 15. Absorção = volume relativo alto, fechamento na parte alta do candle e CMF > 0. Divergência = preço na mínima de 20 dias (até 1,5% acima) e RSI pelo menos 3 pontos acima da mínima anterior.`,
+       `Sinal: score ≥ ${ic.score_ant_min} e (absorção ou divergência) · volume relativo mínimo ${ic.vol_rel_min}x`],
+      ['Reversão confirmada (REV)',
+       'A virada já apareceu no preço. Score confirmado (máx. 100): fechamento acima da EMA20 20, EMA20 acima da EMA50 15, histograma do MACD > 0 15, CMF > 0 10, volume relativo > 1,2x 10, +DI acima de −DI 10, rompimento da máxima de 10 pregões 15, força relativa > BOVA11 5. Quando há os dois sinais, vale a reversão confirmada.',
+       `Sinal: score ≥ ${ic.score_conf_min}, rompimento da máxima dos 10 pregões anteriores e fechamento acima da EMA20`],
+      ['Plano de referência',
+       'Calculado só para ativos com sinal: entrada no último fechamento, stop abaixo da entrada em múltiplos do ATR de 14 dias e dois alvos em múltiplos do risco. É referência de estudo, não ordem.',
+       `Stop = entrada − ${ic.atr_stop}×ATR · alvo 1 = ${ic.rr1}× o risco · alvo 2 = ${ic.rr2}× o risco`],
+    ]],
+    ['Análise no fim de cada gráfico (vale para todos os ativos)', [
+      ['Projeção de volatilidade (±1σ e ±2σ)',
+       'Desvio padrão dos retornos diários do papel, projetado para frente com a raiz do tempo e sem tendência. Em teoria, ±1σ cobre ~68% dos casos e ±2σ ~95%. No gráfico: linhas amarelas tracejadas (±1σ) e roxas pontilhadas (±2σ) à direita do último candle; abaixo do gráfico, a tabela de preços em 5, 10 e 20 pregões.',
+       `Volatilidade medida nos últimos ${vl.window} pregões · projeção de ${vl.horizon} pregões · tabela em ${vl.steps.join(', ')} pregões`],
+      ['Fibonacci (retração e extensão)',
+       `Acha a maior máxima e a menor mínima da janela e usa o movimento entre elas. Retrações (laranja) mostram até onde uma correção ou repique pode ir; extensões (verde-água), alvos se o movimento continuar. No gráfico, as linhas começam ${FIB_START} pregões à frente do último candle (o cone de volatilidade começa no último candle), sem poluir o histórico nem o início da análise. A tabela mostra a distância de cada nível ao preço e se ele cabe dentro do cone de ±1σ ou ±2σ.`,
+       `Janela de ${fb.lookback} pregões · retrações: ${fb.ret.map(x=>(x*100).toFixed(x*100%1?1:0)+'%').join(', ')} · extensões: ${fb.ext.map(x=>(x*100).toFixed(1)+'%').join(', ')}`],
+    ]],
+  ];
+  return groups.map(([g,items])=>`<h3>${g}</h3>`+items.map(([t,d,s])=>`<div class="li"><b>${t}</b><p>${d}</p><small>${s}</small></div>`).join('')).join('')
+    + '<h3>Observação</h3><div class="li"><p>Estes filtros são informação técnica calculada com dados diários do Yahoo Finance, não recomendação de compra ou venda. Os parâmetros ficam no topo do arquivo scripts/build.py.</p></div>';
+}
+function toggleLegend(on){ if(on) $('#mbody').innerHTML = legendHtml(); $('#modal').classList.toggle('show',on); }
+$('#info').onclick=()=>toggleLegend(true);
+$('#mclose').onclick=()=>toggleLegend(false);
+$('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') toggleLegend(false); });
+
+$('#back').onclick=()=>{ $('#view').classList.remove('show'); if(chart){chart.remove();chart=null;} $('#plabels').innerHTML=''; };
+$('#prev').onclick=()=>openTicker(Math.max(0,curIdx-1));
+$('#next').onclick=()=>openTicker(Math.min(shown.length-1,curIdx+1));
+
+(async()=>{
+  try{
+    const r = await (await fetch('data/index.json',{cache:'no-cache'})).json();
+    ITEMS = r.items; CD = r.cross_days || 3; if(r.config) CFG = r.config;
+    $('#upd').textContent = 'Atualizado ' + new Date(r.updated).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) + ' · ' + r.count + ' ativos';
+    buildChips(); render();
+  }catch(e){ $('#list').innerHTML='<div class="empty">Dados ainda não gerados. Rode o workflow no GitHub.</div>'; }
+})();
+</script>
+</body>
+</html>
