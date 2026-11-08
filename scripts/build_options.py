@@ -114,12 +114,12 @@ class Net:
                         r = self.sess.get(url, timeout=15, headers=HEADERS)     # com cabeçalhos de navegador
                 if r.status_code == 429:
                     try:
-                        pausa = min(max(float(r.headers.get("Retry-After", "")), 1.0), 30.0)
+                        pausa = min(max(float(r.headers.get("Retry-After", "")), 5.0), 60.0)
                     except Exception:
-                        pausa = min(3.0 * (2 ** t), 20.0)                       # 3s, 6s, 12s, 20s
+                        pausa = min(5.0 * (2 ** t), 40.0)                       # 5s, 10s, 20s, 40s
                     self.pausa_ate = max(self.pausa_ate, time.time() + pausa)   # pausa GLOBAL: ninguém insiste junto
                     self.n429 += 1
-                    self.intervalo = min(max(self.intervalo * 1.5, 0.3), 1.0)   # e as próximas ficam mais espaçadas
+                    self.intervalo = min(max(self.intervalo * 1.5, 0.6), 2.0)   # e as próximas ficam mais espaçadas
                     self.erro = "HTTP 429 – o site limitou as requisições"
                     continue
                 if r.status_code != 200:
@@ -565,6 +565,8 @@ def rodar_lotes(args):
     print(f"Universo: {len(universo)} ações em {n} lote(s) de {args.lote_tam}", flush=True)
     t0 = time.time()
     for i in range(1, n + 1):
+        if i > 1 and args.pausa_lotes > 0:
+            time.sleep(args.pausa_lotes)
         print(f"\n=== LOTE {i}/{n}: {', '.join(universo[(i - 1) * args.lote_tam:i * args.lote_tam])} ===", flush=True)
         try:
             subprocess.run([sys.executable, "-u", os.path.abspath(__file__)] + base + ["--lote", str(i)],
@@ -699,6 +701,8 @@ def main() -> int:
     ap.add_argument("--top", type=int, default=0, help="entre os candidatos de opcoes_ativos.txt, mantém só os N mais líquidos EM OPÇÕES (volume negociado no opcoes.net.br); 0 = todos")
     ap.add_argument("--wheel-dte", type=int, default=45, help="na triagem de liquidez (--top) olha só vencimentos até N dias; as LEAPS dos N escolhidos são baixadas depois")
     ap.add_argument("--leaps-min", type=int, default=365, help="LEAPS: baixa só vencimentos com mais de N dias (padrão 365)")
+    ap.add_argument("--leaps-max-venc", type=int, default=4, help="por ação, baixa só os N vencimentos LEAPS mais longos (padrão 4): é o que mais reduz as requisições")
+    ap.add_argument("--pausa-lotes", type=float, default=20.0, help="segundos de descanso entre lotes (deixa o site aliviar o limite de requisições)")
     ap.add_argument("--put-dte", type=int, default=60, help="PUT/Wheel: baixa todos os vencimentos de 1 a N dias (padrão 60)")
     ap.add_argument("--leaps-ttl-h", type=float, default=6.0, help="reaproveita os vencimentos LEAPS da coleta anterior se tiverem menos de N horas (0 = sempre baixa)")
     ap.add_argument("--hist-cache", default="cache", help="pasta do cache de histórico diário (HV)")
@@ -911,7 +915,7 @@ def main() -> int:
             reaproveitados = 0
             longos = []
             for a in ativos:
-                lv = [v for v in venc_por[a] if dias(v) >= args.leaps_min]
+                lv = [v for v in venc_por[a] if dias(v) >= args.leaps_min][-max(1, args.leaps_max_venc):]
                 pr = prev_leaps(a) if (lv and args.leaps_ttl_h > 0) else None
                 prev = pr[0] if pr else None
                 if pr:
@@ -928,7 +932,7 @@ def main() -> int:
         else:
             pares, reaproveitados = [], 0
             for a in ativos:
-                lv = [v for v in venc_por[a] if dias(v) >= args.leaps_min]
+                lv = [v for v in venc_por[a] if dias(v) >= args.leaps_min][-max(1, args.leaps_max_venc):]
                 pr = prev_leaps(a) if (lv and args.leaps_ttl_h > 0) else None
                 prev = pr[0] if pr else None
                 if pr:
