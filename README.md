@@ -26,7 +26,7 @@ Na primeira execução (sem cache) os gráficos são sempre calculados.
 ```bash
 pip install -r requirements.txt
 python scripts/build.py                                   # 1) gráficos -> docs/data
-python scripts/build_options.py --out site/opcoes --graficos-dir docs/data --ativos opcoes/opcoes_ativos.txt \
+python scripts/build_options.py --out site/opcoes --graficos-dir docs/data \
        --n-universo 50 --lote 0 --lote-tam 10 --put-dte 60 --leaps-min 90
 # montar o site: copie docs/* para site/ e opcoes/{index.html,opcoes.js,opcore.js,opcoes.css,manifest.webmanifest} para site/opcoes/
 python -m http.server -d site 8000
@@ -40,6 +40,7 @@ python -m http.server -d site 8000
 - Quantas ações: `--n-universo` (50) e `--lote-tam` (10) no workflow.
 - Prazos: `--put-dte 60` (PUT até 60 dias) e `--leaps-min 90` (CALLs longas acima de 90 dias; use 365 para só LEAPS de verdade).
 - Sinais das PUTs e CALLs longas: `opcoes/opcore.js`. Indicadores dos gráficos: `scripts/build.py`.
+- **Não existe lista fixa de ações**: o universo é sempre as 50 primeiras do ranking de liquidez que os Gráficos acabaram de gerar.
 - Ações sem opções negociadas entre as 50 aparecem como "falhas" e não atrapalham o resto.
 
 Ferramenta educacional, não é recomendação de investimento.
