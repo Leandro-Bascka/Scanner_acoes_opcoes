@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Opcoes_B3">
+<title>Opcoes_B3 · Wheel e Calls longas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="opcoes.css">
+<style>
+:root{
+  --bg:#0b0e13; --panel:#11161d; --panel2:#151b24; --line:#1f2733; --txt:#d9e0ea; --mut:#8793a4;
+  --up:#26c281; --dn:#ef5350; --amb:#f5a524; --acc:#4da3ff;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 var(--sans)}
+button{font:inherit;color:inherit;cursor:pointer}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .dn{color:var(--dn)} .mut{color:var(--mut)} .amb{color:var(--amb)}
+
+/* ---------- topo ---------- */
+header{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);
+  background:var(--panel);height:56px;padding-top:max(10px,env(safe-area-inset-top))}
+.logo{font-weight:800;letter-spacing:.04em;font-size:15px;white-space:nowrap}
+.logo b{color:var(--acc)}
+.logo .lg2{color:var(--mut);font-weight:600;letter-spacing:0}
+@media (max-width:600px){.logo .lg2{display:none}}
+body[data-view="op"] .meta{display:none}
+.meta{color:var(--mut);font-size:12px;line-height:1.25;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta .num{color:var(--txt)}
+.sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;border:0;padding:6px 11px;color:var(--mut);font-size:13px}
+.seg button.on{background:var(--panel2);color:var(--txt);box-shadow:inset 0 -2px 0 var(--acc)}
+.banner{background:#3a2a05;color:#ffd27a;text-align:center;font-size:12px;padding:5px 10px;border-bottom:1px solid #5a4210}
+.banner.err{background:#3a1212;color:#ffb4b4;border-color:#5a2020}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
+  padding:8px 14px;border-radius:999px;font-size:13px;z-index:30;box-shadow:0 6px 24px #0008}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:minmax(330px,400px) 1fr;height:calc(100% - 56px);min-height:0}
+.app.hasbanner{height:calc(100% - 56px - 28px)}
+#listpane{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+#detail{overflow:auto;min-height:0}
+.filters{padding:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.filters input{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:8px 10px;font:inherit}
+.filters .seg{display:flex}.filters .seg button{flex:1;padding:6px 4px}
+#rows{overflow:auto;flex:1;min-height:0}
+.row{display:grid;grid-template-columns:62px 1fr auto;grid-template-areas:"tk dir px" "tk st sc";gap:1px 10px;width:100%;text-align:left;
+  background:transparent;border:0;border-bottom:1px solid var(--line);padding:9px 12px;align-items:center}
+.row:hover{background:var(--panel2)} .row.sel{background:#16202e;box-shadow:inset 3px 0 0 var(--acc)}
+.row .tk{grid-area:tk;font-weight:700;font-family:var(--mono);font-size:14px}
+.row .dir{grid-area:dir;font-size:12px;font-weight:700;letter-spacing:.03em}
+.row .px{grid-area:px;text-align:right;font-size:13px}
+.row .st{grid-area:st;font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .st.zone{color:var(--amb);font-weight:700}
+.row .sc{grid-area:sc;display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.row .sc i{display:block;height:5px;border-radius:3px;background:var(--acc);width:48px;position:relative;background:#243044;overflow:hidden}
+.row .sc i s{position:absolute;inset:0 auto 0 0;background:var(--acc);display:block}
+.row .sc b{font-family:var(--mono);font-size:13px;min-width:22px;text-align:right}
+.empty{padding:28px 18px;color:var(--mut);text-align:center}
+
+.symhead{display:flex;align-items:center;gap:12px;padding:12px 14px;flex-wrap:wrap}
+.symhead .t{font:800 22px var(--mono);letter-spacing:.02em}
+.symhead .p{font:600 18px var(--mono)}
+.badge{display:inline-block;padding:3px 9px;border-radius:6px;font-size:12px;font-weight:800;letter-spacing:.04em}
+.badge.buy{background:#10392a;color:var(--up)} .badge.sell{background:#3d1a1a;color:var(--dn)} .badge.neu{background:#232a35;color:var(--mut)}
+.ring{--v:0;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;font:700 14px var(--mono);
+  background:conic-gradient(var(--c,var(--acc)) calc(var(--v)*1%),#243044 0)}
+.ring span{width:36px;height:36px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+.layers{display:flex;gap:6px;padding:0 14px 8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:transparent;border-radius:999px;padding:3px 10px;font-size:12px;color:var(--mut);display:inline-flex;align-items:center;gap:6px}
+.chip i{width:8px;height:8px;border-radius:2px;display:inline-block;background:var(--c)}
+.chip.on{color:var(--txt);background:var(--panel2);border-color:#2b3646}
+.chip:not(.on) i{opacity:.3}
+#chartpane{height:clamp(380px,60vh,760px);display:flex;flex-direction:column;border-bottom:1px solid var(--line)}
+#chartwrap{flex:1;position:relative;min-height:0}
+#chart{position:absolute;inset:0}
+#ov{position:absolute;inset:0;pointer-events:none;width:100%;height:100%}
+
+#planpane{padding:14px;display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+.card h3{margin:0 0 10px;font-size:12px;letter-spacing:.09em;color:var(--mut);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{font-size:11px;padding:2px 8px;border-radius:999px;background:#232a35;color:var(--txt);letter-spacing:0;text-transform:none;font-weight:700}
+.pill.zone{background:#4a3306;color:var(--amb)} .pill.bad{background:#3d1a1a;color:var(--dn)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0}
+.kv dt{color:var(--mut)} .kv dd{margin:0;text-align:right;font-family:var(--mono)}
+.kv dd small{color:var(--mut);font-family:var(--sans)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tag{font-size:11.5px;padding:2px 8px;border-radius:6px;background:#1b2330;color:var(--mut)} .tag.on{color:var(--txt);background:#1c3250}
+ul.ins{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+ul.ins li{padding-left:14px;position:relative;color:#c3ccd9} ul.ins li:before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:2px;background:var(--acc)}
+ul.ins li.warn:before{background:var(--amb)}
+.bd{display:grid;gap:7px}
+.bd div{display:grid;grid-template-columns:150px 1fr 44px;gap:8px;align-items:center;font-size:12.5px}
+.bd .bar{height:6px;background:#243044;border-radius:3px;overflow:hidden}.bd .bar s{display:block;height:100%;background:var(--acc)}
+.bd span:last-child{text-align:right;font-family:var(--mono);color:var(--mut)}
+.calc{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.calc label{font-size:11.5px;color:var(--mut);display:grid;gap:3px}
+.calc input{background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:7px 9px;font:inherit;font-family:var(--mono);width:100%}
+.disc{color:var(--mut);font-size:11.5px;padding:0 14px 90px;max-width:900px}
+
+nav.tabs{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:calc(100% - 56px - 54px - env(safe-area-inset-bottom))}
+  .app.hasbanner{height:calc(100% - 56px - 28px - 54px - env(safe-area-inset-bottom))}
+  #listpane{border-right:0}
+  .app[data-pane="list"] #detail{display:none}
+  .app[data-pane="chart"] #listpane,.app[data-pane="plan"] #listpane{display:none}
+  .app[data-pane="chart"] #planpane,.app[data-pane="chart"] .disc{display:none}
+  .app[data-pane="plan"] #chartpane,.app[data-pane="plan"] .layers{display:none}
+  #chartpane{height:calc(100% - 118px);min-height:320px}
+  nav.tabs{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;background:var(--panel);
+    border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:20}
+  nav.tabs button{background:transparent;border:0;padding:10px 4px 9px;color:var(--mut);font-size:12.5px;display:grid;gap:2px;justify-items:center}
+  nav.tabs button b{font-size:17px;line-height:1}
+  nav.tabs button.on{color:var(--txt);box-shadow:inset 0 2px 0 var(--acc)}
+  .meta .full{display:none} .toast{bottom:80px}
+  .bd div{grid-template-columns:120px 1fr 40px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">OPÇÕES<b>·</b>B3<span class="lg2"> wheel e calls longas</span></div>
+  <div class="sp"></div>
+  <a href="../" style="color:#4da3ff;text-decoration:none;font-size:14px;white-space:nowrap">← Gráficos</a>
+</header>
+<section id="opcoes"></section>
+<script src="https://unpkg.com/lightweight-charts@4.2.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="opcore.js"></script>
+<script src="opcoes.js"></script>
+<script>
+"use strict";
+(function () {
+  const go = () => window.Opcoes && window.Opcoes.show();
+  go();
+  setInterval(() => { if (!document.hidden) go(); }, 10 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) go(); });
+})();
+</script>
+</body>
+</html>
