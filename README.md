@@ -44,3 +44,6 @@ python -m http.server -d site 8000
 - Ações sem opções negociadas entre as 50 aparecem como "falhas" e não atrapalham o resto.
 
 Ferramenta educacional, não é recomendação de investimento.
+
+## Se o opcoes.net.br limitar (HTTP 429)
+O site limita requisições vindas dos servidores do GitHub. O workflow já vai devagar (3 em paralelo, 0,6 s entre requisições, descanso de 20 s entre lotes e só os 4 vencimentos LEAPS mais longos por ação). Se ainda assim falhar, rode a coleta das opções no seu computador (comando acima), que usa o seu IP.
