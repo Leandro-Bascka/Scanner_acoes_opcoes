@@ -1,0 +1,124 @@
+name: Atualizar gráficos e opções
+
+on:
+  schedule:
+    - cron: "30 21 * * 1-5"     # 18:30 (Brasília): recalcula os GRÁFICOS e depois as opções
+    - cron: "5 13-20 * * 1-5"   # 10:05 a 17:05 (Brasília): só as OPÇÕES, reaproveitando os gráficos
+  workflow_dispatch:
+    inputs:
+      graficos:
+        description: "Recalcular os gráficos agora (baixa tudo no Yahoo)?"
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: scanner-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # Gráficos gerados na última execução completa (docs/data) ficam guardados para as execuções horárias.
+      - name: Restaurar dados dos gráficos
+        uses: actions/cache@v4
+        with:
+          path: docs/data
+          key: graficos-${{ github.run_id }}
+          restore-keys: graficos-
+      - name: Restaurar cache do histórico das opções
+        uses: actions/cache@v4
+        with:
+          path: cache
+          key: opcache-${{ github.run_id }}
+          restore-keys: opcache-
+
+      - name: Decidir se recalcula os gráficos
+        id: g
+        run: |
+          full=0
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "30 21 * * 1-5" ]; then full=1; fi
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.graficos }}" = "true" ]; then full=1; fi
+          if [ ! -f docs/data/index.json ]; then full=1; fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "Recalcular gráficos: $full"
+
+      # ETAPA 1 — Gráficos: gera docs/data/index.json com o ranking de liquidez
+      - name: Gráficos (Yahoo)
+        if: steps.g.outputs.full == '1'
+        continue-on-error: true
+        run: python -u scripts/build.py
+
+      # ETAPA 2 — Opções: só das 50 mais líquidas do ranking acima, em lotes de 10 (PUT e CALL)
+      - name: Opções das 50 mais líquidas (lotes de 10)
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: >
+          python -u scripts/build_options.py --out site/opcoes
+          --graficos-dir docs/data
+          --ativos opcoes/opcoes_ativos.txt
+          --n-universo 50
+          --lote 0 --lote-tam 10
+          --workers 8 --intervalo 0.2 --max-min 4
+          --wheel-dte 45 --put-dte 60 --leaps-min 90
+          --prev-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/opcoes"
+
+      - name: Montar o site (Gráficos na raiz, Opções em /opcoes)
+        run: |
+          mkdir -p site
+          cp -r docs/. site/
+          mkdir -p site/opcoes
+          cp opcoes/index.html opcoes/opcoes.js opcoes/opcore.js opcoes/opcoes.css opcoes/manifest.webmanifest site/opcoes/
+          find site -maxdepth 2 | head -30
+
+      - name: Resumo do resultado das opções
+        if: always()
+        run: |
+          python - <<'PY'
+          import json, os
+          p = 'site/opcoes/data/opcoes/meta.json'
+          if not os.path.exists(p):
+              print('ERRO: meta.json das opções não foi criado; veja a etapa de opções.')
+              raise SystemExit(0)
+          d = json.load(open(p, encoding='utf-8'))
+          ativos, falhas, motivos = d.get('ativos', []), d.get('falhas', []), d.get('falhas_motivo', {})
+          fresh = [a['t'] for a in ativos if not a.get('stale')]
+          stale = [a['t'] for a in ativos if a.get('stale')]
+          print(f"Atualizados: {len(fresh)} | dados anteriores: {len(stale)} | falhas: {len(falhas)}")
+          for t in falhas:
+              print(f"FALHA {t}: {motivos.get(t, 'motivo não informado')}")
+          s = os.environ.get('GITHUB_STEP_SUMMARY')
+          if s:
+              with open(s, 'a', encoding='utf-8') as f:
+                  f.write(f"## Opções\n\n- Atualizados: {len(fresh)}\n- Dados anteriores: {len(stale)}\n- Sem opções/falhas: {len(falhas)}\n")
+          PY
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
