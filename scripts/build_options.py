@@ -539,8 +539,7 @@ def obter_universo(args):
     """As N ações mais líquidas (Fundamentus; cache 24h). Plano B: opcoes_ativos.txt."""
     lst = universo_fundamentus(args.n_universo, args.hist_cache)
     if not lst:
-        lst = ler_ativos(args.ativos)[:args.n_universo]
-        print(f"  [aviso] usando opcoes_ativos.txt como universo ({len(lst)} ativos)", flush=True)
+        print("  [ERRO] sem universo: não há ranking dos Gráficos nem do Fundamentus. Rode antes o scripts/build.py.", flush=True)
     return lst
 
 
@@ -548,6 +547,8 @@ def rodar_lotes(args):
     """--lote 0: roda os lotes (de --lote-tam ativos) um por vez, cada um em um processo próprio e com tempo limite.
     Um lote que falhar ou estourar o tempo não derruba os outros; os dados dos lotes anteriores ficam preservados."""
     universo = obter_universo(args)
+    if not universo:
+        return 0
     escrever_universo(os.path.join(args.out, "data", "opcoes", "universo_80.json"), universo, args.hist_cache, args.lote_tam)
     n = -(-len(universo) // args.lote_tam)
     base, skip, i = [], False, 1
@@ -577,6 +578,8 @@ def rodar_lotes(args):
 
 
 def ler_ativos(path):
+    if not path or not os.path.exists(path):
+        return []
     with open(path, encoding="utf-8") as f:
         ts = [l.split("#")[0].strip().upper() for l in f]
     seen, out = set(), []
@@ -684,7 +687,7 @@ def diagnostico(ativo):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="site")
-    ap.add_argument("--ativos", default="opcoes_ativos.txt")
+    ap.add_argument("--ativos", default="", help="(opcional, modo antigo sem lotes) arquivo com a lista de tickers")
     ap.add_argument("--universo", default="fundamentus", choices=["fundamentus", "arquivo"],
                     help="origem dos candidatos: 'fundamentus' = ações mais líquidas (Liq.2meses); 'arquivo' = só opcoes_ativos.txt")
     ap.add_argument("--cand", type=int, default=120, help="quantos candidatos (mais líquidos no Fundamentus) entram na triagem de opções; o --top escolhe os finais")
