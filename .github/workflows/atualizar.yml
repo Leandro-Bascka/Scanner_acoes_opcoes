@@ -71,7 +71,6 @@ jobs:
         run: >
           python -u scripts/build_options.py --out site/opcoes
           --graficos-dir docs/data
-          --ativos opcoes/opcoes_ativos.txt
           --n-universo 50
           --lote 0 --lote-tam 10
           --workers 8 --intervalo 0.2 --max-min 4
