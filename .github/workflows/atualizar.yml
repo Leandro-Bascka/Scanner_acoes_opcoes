@@ -73,8 +73,8 @@ jobs:
           --graficos-dir docs/data
           --n-universo 50
           --lote 0 --lote-tam 10
-          --workers 8 --intervalo 0.2 --max-min 4
-          --wheel-dte 45 --put-dte 60 --leaps-min 90
+          --workers 3 --intervalo 0.6 --max-min 6 --pausa-lotes 20
+          --wheel-dte 45 --put-dte 60 --leaps-min 90 --leaps-max-venc 4
           --prev-url "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/opcoes"
 
       - name: Montar o site (Gráficos na raiz, Opções em /opcoes)
