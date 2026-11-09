@@ -22,7 +22,9 @@ BARS = 500          # candles exibidos no gráfico
 HISTORY = "3y"      # histórico baixado (EMA200 precisa de aquecimento)
 LIQ_DAYS = 60       # janela da liquidez (pregões, ~3 meses). Ajuste se quiser
 BATCH = 25          # tickers por requisição
-CROSS_DAYS = 3      # um cruzamento de médias vale se ocorreu nos últimos N pregões (1 = só no último)
+CROSS_DAYS = 5      # um cruzamento de médias vale se ocorreu nos últimos N pregões (1 = só no último)
+CROSS_PRIOR_9_20 = 3     # antes de um cruzamento MA9 x SMA20, a MA9 precisa ter ficado do outro lado por pelo menos N pregões seguidos
+CROSS_PRIOR_20_50 = 10   # idem para SMA20 x EMA50 (evita 'falso cruzamento': média que já estava acima, deu um mergulho de 1 dia e voltou)
 
 # divergência de alta (preço faz fundo mais baixo, indicador faz fundo mais alto)
 DIV_PIVOT = 3       # um fundo é a mínima mais baixa entre N pregões antes e N depois (precisa de N pregões de confirmação)
@@ -98,16 +100,34 @@ def add_indicators(df):
     return df
 
 
-def recent_cross(a, b, days=CROSS_DAYS):
-    """Cruzamento mais recente de a sobre b nos últimos `days` pregões: 1 = a cruzou para cima, -1 = para baixo."""
-    diff = (a - b).tail(days + 1).to_numpy()
+def recent_cross(a, b, days=CROSS_DAYS, prior=0):
+    """Cruzamento mais recente de a sobre b nos últimos `days` pregões: 1 = a cruzou para cima, -1 = para baixo.
+
+    `prior`: só vale se, antes do cruzamento, `a` estava do lado oposto de `b` por pelo menos `prior` pregões seguidos
+    (ex.: para um cruzamento para cima, `a` ficou abaixo de `b` nos `prior` pregões anteriores) e se, depois dele,
+    `a` permaneceu do lado novo até hoje. Isso descarta o 'cruzamento' de uma média que já estava acima há muito
+    tempo e só deu um mergulho curto abaixo da outra.
+    """
+    diff = (a - b).to_numpy(dtype=float)
+    n = len(diff)
     result = 0
-    for prev, cur in zip(diff[:-1], diff[1:]):
+    for i in range(max(1, n - days), n):          # i = pregão do cruzamento (um dos últimos `days`)
+        prev, cur = diff[i - 1], diff[i]
         if np.isnan(prev) or np.isnan(cur):
             continue
         if prev <= 0 < cur:
-            result = 1
+            sign = 1
         elif prev >= 0 > cur:
+            sign = -1
+        else:
+            continue
+        before = diff[max(0, i - prior): i]        # os `prior` pregões anteriores ao cruzamento
+        if len(before) < prior or np.isnan(before).any():
+            continue
+        after = diff[i:]                           # do pregão do cruzamento até hoje
+        if sign == 1 and (before <= 0).all() and (after > 0).all():
+            result = 1
+        elif sign == -1 and (before >= 0).all() and (after < 0).all():
             result = -1
     return result
 
@@ -346,8 +366,8 @@ def main():
             "rsi": f(last["RSI"]), "macd": f(last["MACD"], 3),
             "above200": bool(last["Close"] > last["EMA200"]) if not pd.isna(last["EMA200"]) else None,
             # cruzamentos nos últimos CROSS_DAYS pregões: 1 = para cima, -1 = para baixo, 0 = nenhum
-            "cross": recent_cross(df["MA9"], df["SMA20"]),        # MA9 x SMA20
-            "c2050": recent_cross(df["SMA20"], df["EMA50"]),      # SMA20 x EMA50
+            "cross": recent_cross(df["MA9"], df["SMA20"], prior=CROSS_PRIOR_9_20),        # MA9 x SMA20
+            "c2050": recent_cross(df["SMA20"], df["EMA50"], prior=CROSS_PRIOR_20_50),      # SMA20 x EMA50
             "divrsi": div_rsi is not None,     # divergência de alta no RSI
             "divmacd": div_macd is not None,   # divergência de alta no MACD
             # scanner de acumulação/reversão: sinal ('acum' | 'rev' | None) e pontuações
@@ -357,7 +377,7 @@ def main():
         })
 
     config = {  # parâmetros em uso; o site mostra isso na "Legenda"
-        "cross_days": CROSS_DAYS, "liq_days": LIQ_DAYS,
+        "cross_days": CROSS_DAYS, "cross_prior": {"ma9_sma20": CROSS_PRIOR_9_20, "sma20_ema50": CROSS_PRIOR_20_50}, "liq_days": LIQ_DAYS,
         "div": {"pivot": DIV_PIVOT, "recent": DIV_RECENT, "min_gap": DIV_MIN_GAP, "max_gap": DIV_MAX_GAP,
                 "price_tol_pct": round(DIV_PRICE_TOL * 100, 2), "rsi_margin": DIV_RSI_MARGIN, "rsi_max": DIV_RSI_MAX},
         "vol": {"window": VOL_WINDOW, "horizon": VOL_HORIZON, "steps": list(VOL_STEPS)},
