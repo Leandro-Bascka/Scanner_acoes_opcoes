@@ -495,8 +495,8 @@
       const s = ch.addLineSeries({ color, lineWidth: w, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
       s.setData(pr.xs.map((t, i) => ({ time: t, value: vals[i] }))); projS.push(s); return s;
     };
-    const sUp = add(pr.ivUp1, COL.up, 2, 0); add(pr.ivDn1, COL.dn, 2, 0); add(pr.ivUp2, COL.up, 1, 1); add(pr.ivDn2, COL.dn, 1, 1);
-    add(pr.hvUp1, COL.hv, 2, 0); add(pr.hvDn1, COL.hv, 2, 0); add(pr.hvUp2, COL.hv, 1, 2); add(pr.hvDn2, COL.hv, 1, 2);
+    const sUp = add(pr.ivUp1, COL.up, 1, 0); add(pr.ivDn1, COL.dn, 1, 0); add(pr.ivUp2, COL.up, 1, 1); add(pr.ivDn2, COL.dn, 1, 1);
+    add(pr.hvUp1, COL.hv, 1, 0); add(pr.hvDn1, COL.hv, 1, 0); add(pr.hvUp2, COL.hv, 1, 2); add(pr.hvDn2, COL.hv, 1, 2);
     if (sUp && pr.colado && pr.datas.length) sUp.setMarkers([{ time: pr.datas[pr.datas.length - 1], position: "aboveBar", color: COL.venc, shape: "arrowDown", text: ddmmyy(o.venc).slice(0, 5) }]);
     const n = px.length; ch.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 100), to: n + pr.xs.length + 12 });
     $("#opChTitle").textContent = `${ativo} · ${o.ticker} (${o.tipo}) · projeção`;
