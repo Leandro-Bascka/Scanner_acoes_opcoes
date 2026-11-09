@@ -117,9 +117,9 @@ const FILTERS = [
   ['divAny','Diverg. de alta (RSI ou MACD)'],['divRsi','Diverg. de alta RSI'],['divMacd','Diverg. de alta MACD'],
   ['inst','Acumulação/Reversão']
 ];
-let CD = 3; // janela de cruzamento em pregões (vem do index.json)
+let CD = 5; // janela de cruzamento em pregões (vem do index.json)
 // parâmetros usados no cálculo (vêm do index.json, gerado pelo build.py; estes são só valores iniciais)
-let CFG = {cross_days:3, liq_days:60, div:{pivot:3,recent:10,min_gap:5,max_gap:60,price_tol_pct:0.3,rsi_margin:1,rsi_max:45}};
+let CFG = {cross_days:5, cross_prior:{ma9_sma20:3,sma20_ema50:10}, liq_days:60, div:{pivot:3,recent:10,min_gap:5,max_gap:60,price_tol_pct:0.3,rsi_margin:1,rsi_max:45}};
 const PRED = {
   all:()=>true, top50:x=>x.rank<=TOP_N,
   rsiLow:x=>x.rsi!=null&&x.rsi<RSI_LOW, rsiHigh:x=>x.rsi!=null&&x.rsi>RSI_HIGH,
@@ -390,7 +390,8 @@ function legendHtml(){
   const c = CFG, dv = c.div || {}, cd = c.cross_days;
   const ic = {...IC_DEFAULT, ...(c.inst||{})};
   const vl = c.vol || {window:60,horizon:20,steps:[5,10,20]}, fb = c.fib || {lookback:120,ret:[0.236,0.382,0.5,0.618,0.786],ext:[1.272,1.618]};
-  const cross = `Janela: ${cd} ${cd===1?'pregão':'pregões'} (conta o cruzamento mais recente dentro da janela)`;
+  const cp = c.cross_prior || {};
+  const cross = p => `Janela: ${cd} ${cd===1?'pregão':'pregões'} (some depois disso) · só vale se, antes de cruzar, a média ficou do outro lado por pelo menos ${p} pregões seguidos (descarta mergulho curto de uma média que já estava acima/abaixo há tempos)`;
   const divCfg = extra => `Fundos: mínima mais baixa entre ${dv.pivot} pregões antes e ${dv.pivot} depois (confirmação com ${dv.pivot} pregões de atraso) · `
     + `2º fundo nos últimos ${dv.recent} pregões e ainda não rompido · distância entre os fundos: ${dv.min_gap} a ${dv.max_gap} pregões · `
     + `2º fundo pelo menos ${dv.price_tol_pct}% abaixo do 1º · ${extra}`;
@@ -406,10 +407,10 @@ function legendHtml(){
       [`RSI > ${RSI_HIGH}`,'RSI de 14 períodos acima do limite: sobrecompra, o papel subiu bastante.',`Limite: ${RSI_HIGH}`],
     ]],
     ['Médias móveis', [
-      ['Cruz. MA9↑SMA20','A MA9 cruzou a SMA20 de baixo para cima. Aparece na lista como 9↑20.',cross],
-      ['Cruz. MA9↓SMA20','A MA9 cruzou a SMA20 de cima para baixo. Aparece como 9↓20.',cross],
-      ['Cruz. SMA20↑EMA50','A média simples de 20 dias cruzou a média exponencial de 50 dias de baixo para cima. Aparece como 20↑50.',cross],
-      ['Cruz. SMA20↓EMA50','A média simples de 20 dias cruzou a média exponencial de 50 dias de cima para baixo. Aparece como 20↓50.',cross],
+      ['Cruz. MA9↑SMA20','A MA9 cruzou a SMA20 de baixo para cima. Aparece na lista como 9↑20.',cross(cp.ma9_sma20??3)],
+      ['Cruz. MA9↓SMA20','A MA9 cruzou a SMA20 de cima para baixo. Aparece como 9↓20.',cross(cp.ma9_sma20??3)],
+      ['Cruz. SMA20↑EMA50','A média simples de 20 dias cruzou a média exponencial de 50 dias de baixo para cima. Aparece como 20↑50.',cross(cp.sma20_ema50??10)],
+      ['Cruz. SMA20↓EMA50','A média simples de 20 dias cruzou a média exponencial de 50 dias de cima para baixo. Aparece como 20↓50.',cross(cp.sma20_ema50??10)],
     ]],
     ['Divergência de alta', [
       ['Diverg. de alta (RSI ou MACD)','O preço faz um fundo mais baixo, mas o RSI ou o MACD faz um fundo mais alto: a queda está perdendo força. No gráfico, uma linha tracejada liga os dois fundos no preço e no indicador.','Basta uma das duas divergências (regras abaixo)'],
@@ -454,7 +455,7 @@ $('#next').onclick=()=>openTicker(Math.min(shown.length-1,curIdx+1));
 (async()=>{
   try{
     const r = await (await fetch('data/index.json',{cache:'no-cache'})).json();
-    ITEMS = r.items; CD = r.cross_days || 3; if(r.config) CFG = r.config;
+    ITEMS = r.items; CD = r.cross_days || 5; if(r.config) CFG = r.config;
     $('#upd').textContent = 'Atualizado ' + new Date(r.updated).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) + ' · ' + r.count + ' ativos';
     buildChips(); render();
   }catch(e){ $('#list').innerHTML='<div class="empty">Dados ainda não gerados. Rode o workflow no GitHub.</div>'; }
