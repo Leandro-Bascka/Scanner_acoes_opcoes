@@ -291,6 +291,22 @@
     return out;
   }
 
+  function proxDiasUteis(lastDate, n) {              // próximos n dias úteis depois de lastDate (sem feriados)
+    const out = [];
+    let t = dateMs(lastDate);
+    while (out.length < n) {
+      t += DAY;
+      const wd = new Date(t).getUTCDay();
+      if (wd !== 0 && wd !== 6) out.push(new Date(t).toISOString().slice(0, 10));
+    }
+    return out;
+  }
+
+  // Cone ±1σ/±2σ (IV e HV). Parâmetros do cfg:
+  //   PROJ_DIAS : pregões projetados à frente (0 = até o vencimento da opção)
+  //   PROJ_GAP  : pregões de folga entre o último candle e o início das linhas (0 = colado no último candle)
+  // Com folga > 0 ou PROJ_DIAS > 0 as linhas começam a PROJ_GAP+1 pregões do último candle (sem ligar ao preço) e a largura
+  // do cone usa o tempo real decorrido (raiz de i/252, i = pregões desde o último candle). Um único dia vira um traço horizontal.
   function projecao(A, closes, lastDate, o, cfg, hojeMs) {
     const S = A.S, r = taxaCont(cfg.selic);
     const dias = Math.max(Math.round((dateMs(o.venc) - hojeMs) / DAY), 1);
@@ -305,13 +321,29 @@
     }
     let hvCone = A.hv;
     if (!Number.isFinite(hvCone)) hvCone = hvAnual(closes, 60);
-    const datas = diasUteisApos(lastDate, o.venc);
-    const k = datas.map((_, i) => i + 1);
-    const cone = (sig, mult) => [S, ...k.map(i => S * Math.exp(mult * sig * Math.sqrt(i / 252)))];
+    const gap = Math.max(0, Math.round(cfg.PROJ_GAP || 0));
+    const H = Math.max(0, Math.round(cfg.PROJ_DIAS || 0));
+    const colado = gap === 0 && H === 0;               // comportamento original: do último candle até o vencimento
+    let datas, k, xs;
+    if (colado) {
+      datas = diasUteisApos(lastDate, o.venc);
+      k = datas.map((_, i) => i + 1);
+      xs = [lastDate, ...datas];
+    } else {
+      const n = H > 0 ? H : Math.max(diasUteisApos(lastDate, o.venc).length - gap, 1);
+      const todas = proxDiasUteis(lastDate, gap + n + 1);
+      datas = todas.slice(gap, gap + n);
+      k = datas.map((_, i) => gap + 1 + i);
+      xs = datas.length === 1 ? [datas[0], todas[gap + n]] : datas;   // 1 dia só: traço de 2 pontos para aparecer
+    }
+    const cone = (sig, mult) => {
+      const v = k.map(i => S * Math.exp(mult * sig * Math.sqrt(i / 252)));
+      return colado ? [S, ...v] : (v.length === 1 ? [v[0], v[0]] : v);
+    };
     let pEx = probAcima(S, o.strike, dias / 365, r, iv);
     if (o.tipo === "PUT") pEx = 1 - pEx;
     return {
-      dias, be, iv, hvCone, datas, pEx,
+      dias, be, iv, hvCone, datas, xs, colado, pEx,
       ivUp1: cone(iv, 1), ivDn1: cone(iv, -1), ivUp2: cone(iv, 2), ivDn2: cone(iv, -2),
       hvUp1: Number.isFinite(hvCone) && hvCone > 0 ? cone(hvCone, 1) : null,
       hvDn1: Number.isFinite(hvCone) && hvCone > 0 ? cone(hvCone, -1) : null,
@@ -322,7 +354,7 @@
 
   const API = { DEF, cdf, clip, valorOuPct, dateMs, idadeDias, taxaCont, cdiMensalPct, bsPreco, ivBs, deltaBs,
                 probAcima, hvAnual, liqScore, avaliarVenda, avaliarCallLonga, sinaisPut, scanWheel, scanLong,
-                diasUteisApos, projecao };
+                diasUteisApos, proxDiasUteis, projecao };
   root.OPCORE = API;
   if (typeof module !== "undefined" && module.exports) module.exports = API;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -22,7 +22,7 @@
     wheel: { ativo: "PETR4", modo: "WHEEL", dteMin: 7, dteMax: 45, negMin: 10, range: "10%", premio: "3%",
              putMin: 0.20, putMax: 0.32, callMin: 0.20, callMax: 0.32 },
     long: { todos: true, ativo: "PETR4", range: "20%", premio: "15%", desc: 10, neg: 1, top: 15, dteMin: 365, dteMax: 730 },
-    model: { selicAuto: true, selic: 14, alvoAlta: 20, premioMin: 0.03, idadeMax: 4, idadeMaxLong: 10 }
+    model: { selicAuto: true, selic: 14, alvoAlta: 20, premioMin: 0.03, idadeMax: 4, idadeMaxLong: 10, projDias: 1, projGap: 1 }
   };
   const clone = o => JSON.parse(JSON.stringify(o));
   function merge(base, over) {
@@ -107,7 +107,7 @@
   function cfg() {
     const m = P.model;
     return { selic: selicInfo().v, ALVO_ALTA: m.alvoAlta / 100, PREMIO_MIN: m.premioMin, HV_NEUTRA: C.DEF.HV_NEUTRA,
-             IDADE_MAX_DIAS: m.idadeMax, IDADE_MAX_LONGAS: m.idadeMaxLong };
+             IDADE_MAX_DIAS: m.idadeMax, IDADE_MAX_LONGAS: m.idadeMaxLong, PROJ_DIAS: m.projDias, PROJ_GAP: m.projGap };
   }
 
   // ---------------------------------------------------------------- construção da tela
@@ -169,6 +169,8 @@
         ${fld("model", "premioMin", "Prêmio mínimo (R$)", { t: "n" })}
         ${fld("model", "idadeMax", "Idade máx. preço wheel (dias)", { t: "i" })}
         ${fld("model", "idadeMaxLong", "Idade máx. preço longas (dias)", { t: "i" })}
+        ${fld("model", "projDias", "Projeção IV/HV: pregões à frente (0 = até o vencimento)", { t: "i" })}
+        ${fld("model", "projGap", "Projeção IV/HV: folga após o último candle (pregões)", { t: "i" })}
         <button class="btn" data-act="reset">Restaurar padrões</button>
       </div>
       <p class="hint">Todos os campos desta tela ficam salvos neste aparelho. "Restaurar padrões" volta tudo ao pré-definido (modo WHEEL).</p></details>`;
@@ -491,12 +493,12 @@
     const add = (vals, color, w, style) => {
       if (!vals) return null;
       const s = ch.addLineSeries({ color, lineWidth: w, lineStyle: style, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
-      s.setData([last, ...pr.datas].map((t, i) => ({ time: t, value: vals[i] }))); projS.push(s); return s;
+      s.setData(pr.xs.map((t, i) => ({ time: t, value: vals[i] }))); projS.push(s); return s;
     };
     const sUp = add(pr.ivUp1, COL.up, 2, 0); add(pr.ivDn1, COL.dn, 2, 0); add(pr.ivUp2, COL.up, 1, 1); add(pr.ivDn2, COL.dn, 1, 1);
     add(pr.hvUp1, COL.hv, 2, 0); add(pr.hvDn1, COL.hv, 2, 0); add(pr.hvUp2, COL.hv, 1, 2); add(pr.hvDn2, COL.hv, 1, 2);
-    if (sUp && pr.datas.length) sUp.setMarkers([{ time: pr.datas[pr.datas.length - 1], position: "aboveBar", color: COL.venc, shape: "arrowDown", text: ddmmyy(o.venc).slice(0, 5) }]);
-    const n = px.length; ch.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 100), to: n + pr.datas.length + 12 });
+    if (sUp && pr.colado && pr.datas.length) sUp.setMarkers([{ time: pr.datas[pr.datas.length - 1], position: "aboveBar", color: COL.venc, shape: "arrowDown", text: ddmmyy(o.venc).slice(0, 5) }]);
+    const n = px.length; ch.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 100), to: n + pr.xs.length + 12 });
     $("#opChTitle").textContent = `${ativo} · ${o.ticker} (${o.tipo}) · projeção`;
     const row = (a, b) => `<div><span>${a}</span><span>${b}</span></div>`;
     $("#opInfo").innerHTML = row("Fechamento", "R$ " + F2.format(A.S)) + row("Strike", "R$ " + F2.format(o.strike)) + row("Breakeven", "R$ " + F2.format(pr.be)) +
