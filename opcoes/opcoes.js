@@ -22,7 +22,7 @@
     wheel: { ativo: "PETR4", modo: "WHEEL", dteMin: 7, dteMax: 45, negMin: 10, range: "10%", premio: "3%",
              putMin: 0.20, putMax: 0.32, callMin: 0.20, callMax: 0.32 },
     long: { todos: true, ativo: "PETR4", range: "20%", premio: "15%", desc: 10, neg: 1, top: 15, dteMin: 365, dteMax: 730 },
-    model: { selicAuto: true, selic: 14, alvoAlta: 20, premioMin: 0.03, idadeMax: 4, idadeMaxLong: 10, projDias: 1, projGap: 1 }
+    model: { selicAuto: true, selic: 14, alvoAlta: 20, premioMin: 0.03, idadeMax: 4, idadeMaxLong: 10, projDias: 0, projGap: 1, projV: 0 }
   };
   const clone = o => JSON.parse(JSON.stringify(o));
   function merge(base, over) {
@@ -34,6 +34,7 @@
     return o;
   }
   let P = merge(DEFAULTS, store.get("p", {}));
+  if (P.model.projV !== 2) { P.model.projDias = 0; P.model.projGap = 1; P.model.projV = 2; store.set("p", P); }   // migra o padrão antigo (1 dia = só um traço)
   const save = () => store.set("p", P);
 
   // ---------------------------------------------------------------- estado
@@ -169,8 +170,8 @@
         ${fld("model", "premioMin", "Prêmio mínimo (R$)", { t: "n" })}
         ${fld("model", "idadeMax", "Idade máx. preço wheel (dias)", { t: "i" })}
         ${fld("model", "idadeMaxLong", "Idade máx. preço longas (dias)", { t: "i" })}
-        ${fld("model", "projDias", "Projeção IV/HV: pregões à frente (0 = até o vencimento)", { t: "i" })}
-        ${fld("model", "projGap", "Projeção IV/HV: folga após o último candle (pregões)", { t: "i" })}
+        ${fld("model", "projDias", "Projeção IV/HV: duração em pregões (0 = até o vencimento)", { t: "i" })}
+        ${fld("model", "projGap", "Projeção IV/HV: início (0 = colado no candle; 1 = 1 pregão depois)", { t: "i" })}
         <button class="btn" data-act="reset">Restaurar padrões</button>
       </div>
       <p class="hint">Todos os campos desta tela ficam salvos neste aparelho. "Restaurar padrões" volta tudo ao pré-definido (modo WHEEL).</p></details>`;

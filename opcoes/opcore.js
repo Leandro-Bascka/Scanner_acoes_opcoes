@@ -302,11 +302,11 @@
     return out;
   }
 
-  // Cone ±1σ/±2σ (IV e HV). Parâmetros do cfg:
-  //   PROJ_DIAS : pregões projetados à frente (0 = até o vencimento da opção)
-  //   PROJ_GAP  : pregões de folga entre o último candle e o início das linhas (0 = colado no último candle)
-  // Com folga > 0 ou PROJ_DIAS > 0 as linhas começam a PROJ_GAP+1 pregões do último candle (sem ligar ao preço) e a largura
-  // do cone usa o tempo real decorrido (raiz de i/252, i = pregões desde o último candle). Um único dia vira um traço horizontal.
+  // Cone (parábola) ±1σ/±2σ pela IV e pela HV. Parâmetros do cfg:
+  //   PROJ_GAP  : onde o cone começa. 0 = colado no último candle (parte do preço de fechamento);
+  //               1 = começa no 1º pregão depois do último candle (sem ligar ao candle); 2 = no 2º pregão... 
+  //   PROJ_DIAS : quantos pregões o cone dura. 0 = até o vencimento da opção (parábola completa); 1 = só um traço.
+  // A largura usa o tempo real desde o último candle (raiz de i/252, i = pregões desde o último candle).
   function projecao(A, closes, lastDate, o, cfg, hojeMs) {
     const S = A.S, r = taxaCont(cfg.selic);
     const dias = Math.max(Math.round((dateMs(o.venc) - hojeMs) / DAY), 1);
@@ -323,18 +323,20 @@
     if (!Number.isFinite(hvCone)) hvCone = hvAnual(closes, 60);
     const gap = Math.max(0, Math.round(cfg.PROJ_GAP || 0));
     const H = Math.max(0, Math.round(cfg.PROJ_DIAS || 0));
-    const colado = gap === 0 && H === 0;               // comportamento original: do último candle até o vencimento
+    const colado = gap === 0;                          // 0 = parte do último candle (origem = fechamento)
+    const ateVenc = diasUteisApos(lastDate, o.venc).length;
     let datas, k, xs;
     if (colado) {
-      datas = diasUteisApos(lastDate, o.venc);
+      datas = (H > 0 ? proxDiasUteis(lastDate, H) : diasUteisApos(lastDate, o.venc));
       k = datas.map((_, i) => i + 1);
       xs = [lastDate, ...datas];
     } else {
-      const n = H > 0 ? H : Math.max(diasUteisApos(lastDate, o.venc).length - gap, 1);
-      const todas = proxDiasUteis(lastDate, gap + n + 1);
-      datas = todas.slice(gap, gap + n);
-      k = datas.map((_, i) => gap + 1 + i);
-      xs = datas.length === 1 ? [datas[0], todas[gap + n]] : datas;   // 1 dia só: traço de 2 pontos para aparecer
+      const n = H > 0 ? H : Math.max(ateVenc - gap + 1, 2);        // até o vencimento (mínimo 2 pontos)
+      const todas = proxDiasUteis(lastDate, gap + n);
+      datas = todas.slice(gap - 1, gap - 1 + n);                   // 1º ponto = gap-ésimo pregão depois do último candle
+      k = datas.map((_, i) => gap + i);
+      xs = datas.length === 1 ? [datas[0], todas[gap + n - 1] || datas[0]] : datas;
+      if (datas.length === 1) xs = [datas[0], proxDiasUteis(lastDate, gap + 1)[gap]];   // 1 dia só: traço de 2 pontos
     }
     const cone = (sig, mult) => {
       const v = k.map(i => S * Math.exp(mult * sig * Math.sqrt(i / 252)));
